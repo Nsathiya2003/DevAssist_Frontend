@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { useState } from "react";
 import { createLogin, createUser } from "../services/auth";
 import { toast } from "react-toastify";
-import { showError } from "../utils/toast";
+import { showError, showSuccess } from "../utils/toast";
 
 export default function AuthModal({ open, onClose }) {
   if (!open) return null;
@@ -37,7 +37,7 @@ export default function AuthModal({ open, onClose }) {
           email: data.email,
         });
       }
-
+      console.log("res---", res);
       if (res?.status === "success") {
         showSuccess(res.message || "Success");
 
@@ -46,7 +46,9 @@ export default function AuthModal({ open, onClose }) {
         if (isSignup) {
           setIsSignup(false);
         } else {
-          onClose();
+          setTimeout(() => {
+            onClose();
+          }, 2000);
         }
       } else {
         showError(res?.message || "Failed");
@@ -107,11 +109,17 @@ export default function AuthModal({ open, onClose }) {
 
         {/* Primary Action */}
         <button
-          className="w-full py-3 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition cursor-pointer"
+          className="w-full py-3 text-sm font-medium text-white bg-black rounded-lg flex items-center justify-center cursor-pointer"
           onClick={handleSubmit}
           disabled={loading}
         >
-          {isSignup ? "Create Account" : "Sign in with Email"}
+          {loading ? (
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          ) : isSignup ? (
+            "Create Account"
+          ) : (
+            "Sign in with Email"
+          )}
         </button>
 
         {/* Divider */}
