@@ -29,14 +29,14 @@ export default function Dashboard() {
         </div>
 
         {/* Input Box */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-md p-2 flex items-center">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-md p-2 flex items-center ">
           <input
             type="text"
             placeholder="Ask anything..."
             className="flex-1 px-3 py-3 text-sm outline-none text-gray-700"
           />
 
-          <button className="flex items-center justify-center w-10 h-10 rounded-xl bg-black text-white hover:bg-gray-800 transition">
+          <button className="flex items-center justify-center w-10 h-10 rounded-xl cursor-pointer bg-black text-white hover:bg-gray-800 transition">
             <ArrowUp className="w-4 h-4" />
           </button>
         </div>
