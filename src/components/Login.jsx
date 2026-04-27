@@ -1,10 +1,63 @@
 import { X } from "lucide-react";
 import { useState } from "react";
+import { createLogin, createUser } from "../services/auth";
+import { toast } from "react-toastify";
+import { showError } from "../utils/toast";
 
 export default function AuthModal({ open, onClose }) {
-  const [isSignup, setIsSignup] = useState(false);
-
   if (!open) return null;
+  const [isSignup, setIsSignup] = useState(false);
+  const [data, setData] = useState({
+    username: "",
+    email: "",
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+
+      let res;
+      console.log("username,email", data.username, data.email);
+      if (isSignup) {
+        res = await createUser({
+          username: data.username,
+          email: data.email,
+        });
+      } else {
+        res = await createLogin({
+          email: data.email,
+        });
+      }
+
+      if (res?.status === "success") {
+        showSuccess(res.message || "Success");
+
+        setData({ username: "", email: "" });
+
+        if (isSignup) {
+          setIsSignup(false);
+        } else {
+          onClose();
+        }
+      } else {
+        showError(res?.message || "Failed");
+      }
+    } catch (error) {
+      console.log("error is", error);
+      showError(error.response?.data?.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -33,7 +86,11 @@ export default function AuthModal({ open, onClose }) {
           <input
             type="text"
             placeholder="Enter your name"
+            name="username"
+            id="email"
             className="w-full mb-3 px-4 py-3 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-black"
+            onChange={(e) => handleChange(e)}
+            value={data?.username}
           />
         )}
 
@@ -41,11 +98,19 @@ export default function AuthModal({ open, onClose }) {
         <input
           type="email"
           placeholder="Enter your email"
+          name="email"
+          id="username"
           className="w-full mb-4 px-4 py-3 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-black"
+          onChange={(e) => handleChange(e)}
+          value={data?.email}
         />
 
         {/* Primary Action */}
-        <button className="w-full py-3 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition">
+        <button
+          className="w-full py-3 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition cursor-pointer"
+          onClick={handleSubmit}
+          disabled={loading}
+        >
           {isSignup ? "Create Account" : "Sign in with Email"}
         </button>
 
