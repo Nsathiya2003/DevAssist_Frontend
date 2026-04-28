@@ -3,6 +3,8 @@ import { useState } from "react";
 import { createLogin, createUser } from "../services/auth";
 import { toast } from "react-toastify";
 import { showError, showSuccess } from "../utils/toast";
+import { GoogleLogin, useGoogleLogin } from "@react-oauth/google";
+import axios from "axios";
 
 export default function AuthModal({ open, onClose }) {
   if (!open) return null;
@@ -12,6 +14,10 @@ export default function AuthModal({ open, onClose }) {
     email: "",
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState({
+    username: "",
+    email: "",
+  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -19,9 +25,65 @@ export default function AuthModal({ open, onClose }) {
       ...prev,
       [name]: value,
     }));
+    // clear error for that field
+    setError((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
+  };
+  let baseUrl = import.meta.env.VITE_BACKEND_BASE_URL;
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      setLoading(true);
+
+      const idToken = credentialResponse.credential;
+
+      const backendRes = await axios.post(`${baseUrl}auth/verify-google`, {
+        token: idToken,
+      });
+
+      if (backendRes?.data?.status === "success") {
+        const { token, user } = backendRes.data;
+
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+
+        showSuccess("Login successful");
+
+        setTimeout(() => onClose(), 1000);
+      }
+    } catch (err) {
+      console.log(err);
+      showError("Google login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validateInputFields = () => {
+    let newErrors = {};
+
+    // Username (only for signup)
+    if (isSignup && !data?.username?.trim()) {
+      newErrors.username = "Username is required";
+    }
+
+    // Email (for both)
+    if (!data?.email?.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(data.email)) {
+      newErrors.email = "Invalid email format";
+    }
+
+    setError(newErrors);
+
+    // return true if valid
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
+    if (!validateInputFields()) return;
     try {
       setLoading(true);
 
@@ -37,7 +99,6 @@ export default function AuthModal({ open, onClose }) {
           email: data.email,
         });
       }
-      console.log("res---", res);
       if (res?.status === "success") {
         showSuccess(res.message || "Success");
 
@@ -62,111 +123,154 @@ export default function AuthModal({ open, onClose }) {
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 relative"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded-md"
-        >
-          <X className="w-5 h-5 text-gray-600" />
-        </button>
-
-        {/* Title */}
-        <h2 className="text-xl font-semibold text-center mb-6">
-          {isSignup ? "Create your account" : "Sign in to DevAssist"}
-        </h2>
-
-        {/* Name (Signup only) */}
-        {isSignup && (
-          <input
-            type="text"
-            placeholder="Enter your name"
-            name="username"
-            id="email"
-            className="w-full mb-3 px-4 py-3 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-black"
-            onChange={(e) => handleChange(e)}
-            value={data?.username}
-          />
-        )}
-
-        {/* Email */}
-        <input
-          type="email"
-          placeholder="Enter your email"
-          name="email"
-          id="username"
-          className="w-full mb-4 px-4 py-3 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-black"
-          onChange={(e) => handleChange(e)}
-          value={data?.email}
+    <>
+      <div style={{ display: "none" }}>
+        <GoogleLogin
+          onSuccess={(credentialResponse) => {
+            handleGoogleSuccess(credentialResponse);
+          }}
+          onError={() => showError("Google Login Failed")}
         />
-
-        {/* Primary Action */}
-        <button
-          className="w-full py-3 text-sm font-medium text-white bg-black rounded-lg flex items-center justify-center cursor-pointer"
-          onClick={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          ) : isSignup ? (
-            "Create Account"
-          ) : (
-            "Sign in with Email"
-          )}
-        </button>
-
-        {/* Divider */}
-        <div className="flex items-center gap-2 my-5">
-          <div className="flex-1 h-px bg-gray-200"></div>
-          <span className="text-xs text-gray-400">OR</span>
-          <div className="flex-1 h-px bg-gray-200"></div>
-        </div>
-
-        {/* Google OAuth */}
-        <button className="w-full py-3 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-100 transition cursor-pointer flex items-center justify-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 48 48"
-            className="w-5 h-5"
-          >
-            <path
-              fill="#FFC107"
-              d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12S17.4 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C33.5 6.1 29 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c10 0 19-7 19-20 0-1.3-.1-2.7-.4-3.5z"
-            />
-            <path
-              fill="#FF3D00"
-              d="M6.3 14.7l6.6 4.8C14.5 16 18.9 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C33.5 6.1 29 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"
-            />
-            <path
-              fill="#4CAF50"
-              d="M24 44c5.1 0 9.8-2 13.3-5.2l-6.1-5c-2 1.5-4.5 2.2-7.2 2.2-5.2 0-9.7-3.3-11.3-8l-6.5 5C9.6 39.5 16.2 44 24 44z"
-            />
-            <path
-              fill="#1976D2"
-              d="M43.6 20.5H42V20H24v8h11.3c-1.1 3-3.5 5.4-6.5 6.8l6.1 5C39.5 36.5 43.6 29.5 43.6 20.5z"
-            />
-          </svg>
-          Continue with Google
-        </button>
-
-        {/* Toggle */}
-        <p className="text-sm text-center mt-6 text-gray-500">
-          {isSignup ? "Already have an account?" : "Don’t have an account?"}
-          <span
-            className="ml-1 text-black font-medium cursor-pointer hover:underline"
-            onClick={() => setIsSignup(!isSignup)}
-          >
-            {isSignup ? "Sign in" : "Create account"}
-          </span>
-        </p>
       </div>
-    </div>
+      <div
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        onClick={onClose}
+      >
+        <div
+          className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 relative"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded-md"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+
+          {/* Title */}
+          <h2 className="text-xl font-semibold text-center mb-6">
+            {isSignup ? "Create your account" : "Sign in to DevAssist"}
+          </h2>
+
+          {/* Name (Signup only) */}
+          {isSignup && (
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Name *
+              </label>
+              <input
+                type="text"
+                name="username"
+                value={data.username}
+                onChange={handleChange}
+                className={`w-full px-4 py-3 rounded-lg text-sm outline-none transition
+                ${
+                  error.username
+                    ? "border border-red-500 focus:ring-2 focus:ring-red-500"
+                    : "border border-gray-300 focus:ring-2 focus:ring-black"
+                }`}
+              />
+            </div>
+          )}
+          {error?.username && (
+            <p className="text-red-500 text-xs mt-1">{error.username}</p>
+          )}
+
+          {/* Email */}
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email *
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={data.email}
+              onChange={handleChange}
+              className={`w-full px-4 py-3 rounded-lg text-sm outline-none transition
+              ${
+                error.email
+                  ? "border border-red-500 focus:ring-2 focus:ring-red-500"
+                  : "border border-gray-300 focus:ring-2 focus:ring-black"
+              }`}
+            />
+            {error.email && (
+              <p className="text-red-500 text-xs mt-1">{error.email}</p>
+            )}
+          </div>
+
+          {/* Primary Action */}
+          <button
+            className="w-full py-3 text-sm font-medium text-white bg-black rounded-lg flex items-center justify-center cursor-pointer"
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : isSignup ? (
+              "Create Account"
+            ) : (
+              "Sign in with Email"
+            )}
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-2 my-5">
+            <div className="flex-1 h-px bg-gray-200"></div>
+            <span className="text-xs text-gray-400">OR</span>
+            <div className="flex-1 h-px bg-gray-200"></div>
+          </div>
+
+          {/* Google OAuth */}
+          <button
+            className="w-full py-3 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-100 transition cursor-pointer flex items-center justify-center gap-2"
+            onClick={() => {
+              document.querySelector('[role="button"]').click();
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 48 48"
+              className="w-5 h-5"
+            >
+              <path
+                fill="#FFC107"
+                d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12S17.4 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C33.5 6.1 29 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c10 0 19-7 19-20 0-1.3-.1-2.7-.4-3.5z"
+              />
+              <path
+                fill="#FF3D00"
+                d="M6.3 14.7l6.6 4.8C14.5 16 18.9 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C33.5 6.1 29 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"
+              />
+              <path
+                fill="#4CAF50"
+                d="M24 44c5.1 0 9.8-2 13.3-5.2l-6.1-5c-2 1.5-4.5 2.2-7.2 2.2-5.2 0-9.7-3.3-11.3-8l-6.5 5C9.6 39.5 16.2 44 24 44z"
+              />
+              <path
+                fill="#1976D2"
+                d="M43.6 20.5H42V20H24v8h11.3c-1.1 3-3.5 5.4-6.5 6.8l6.1 5C39.5 36.5 43.6 29.5 43.6 20.5z"
+              />
+            </svg>
+            Continue with Google
+          </button>
+
+          {/* Toggle */}
+          <p className="text-sm text-center mt-6 text-gray-500">
+            {isSignup ? "Already have an account?" : "Don’t have an account?"}
+            <span
+              className="ml-1 text-black font-medium cursor-pointer hover:underline"
+              onClick={() => {
+                setIsSignup(!isSignup);
+                setError({ username: "", email: "" });
+                if (!isSignup) {
+                  setData((prev) => ({ ...prev, username: "" }));
+                }
+              }}
+            >
+              {isSignup ? "Sign in" : "Create account"}
+            </span>
+          </p>
+        </div>
+      </div>
+    </>
   );
 }
