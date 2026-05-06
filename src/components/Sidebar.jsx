@@ -7,7 +7,7 @@ import ChatHistory from "./ChatHistory";
 
 export default function SideBar() {
   return (
-    <aside className="w-64 h-screen bg-white border-r border-gray-200 p-4 flex flex-col">
+    <aside className="w-64 h-screen sticky top-0 self-start bg-white border-r border-gray-200 p-4 flex flex-col">
       {/* Brand */}
       <div className="flex items-center gap-2 mb-8">
         <span className="bg-black text-white px-2 py-1 rounded-md text-sm font-bold">
@@ -19,7 +19,7 @@ export default function SideBar() {
       {/* Navigation */}
       <div className="flex flex-col gap-10 mt-4">
         <NavLink
-          to="/new-chat"
+          to="/dashboard"
           className={({ isActive }) =>
             `flex items-center gap-2 mx-2 px-4 py-3 text-sm font-medium rounded-xl transition ${
               isActive
@@ -39,7 +39,7 @@ export default function SideBar() {
       </div>
 
       {/* Chat histories*/}
-      <div className="flex items-center gap-6">
+      <div className="flex-1 mt-8 min-h-0 overflow-hidden">
         <ChatHistory />
       </div>
 
