@@ -15,6 +15,9 @@ export const createUser = async (data) => {
 export const createLogin = async (data) => {
     try{
         const res = await api.post('user/login',data);
+        let setToken = localStorage.setItem('token',res?.data?.data?.accessToken);
+        console.log('setTokenss',setToken)
+        console.log('token',res?.data?.data?.accessToken)
         return res?.data;
     }
     catch(err){

@@ -2,6 +2,8 @@ import { Sparkles, ArrowUp } from "lucide-react";
 import { useState } from "react";
 import { showError } from "../utils/toast";
 import { createChat } from "../services/chat";
+import { useNavigate } from "react-router-dom";
+import AuthModal from "../components/Login";
 
 const PrimaryTitle = [
   "Explain React hooks",
@@ -11,76 +13,98 @@ const PrimaryTitle = [
 ];
 
 export default function Dashboard() {
-  const [chat, setChat] = useState([]);
+  const [chat, setChat] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
-    const { value } = e.target;
-    setChat(value);
+    setChat(e.target.value);
   };
 
+  let token = localStorage.getItem("token");
+  console.log("Token us", token);
+
   const handleSubmit = async () => {
+    if (!token) {
+      alert("Please login or register to continue");
+      setOpen(true);
+      return;
+    }
+    if (!chat.trim()) return;
+    setLoading(true);
+
     try {
-      let res = await createChat({
-        prompt: chat,
-      });
-      console.log("response is", res);
+      const res = await createChat({ prompt: chat, chatId: null });
+      navigate(`/chat/${res?.chatId}`);
     } catch (error) {
       showError(error?.response?.data?.message || "Something went wrong");
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <main className="h-[calc(100vh-64px)] flex items-center justify-center bg-gray-50">
-      <section className="w-full max-w-2xl px-4 text-center">
-        {/* Heading */}
-        <div className="mb-8">
-          <div className="flex justify-center mb-3">
-            <div className="p-3 bg-black text-white rounded-2xl shadow">
-              <Sparkles className="w-5 h-5" />
-            </div>
-          </div>
+  const handleExampleClick = (value) => {
+    setChat(value);
+  };
 
-          <h2 className="text-3xl font-semibold text-gray-800">
+  return (
+    <main className="min-h-[calc(100vh-64px)] bg-slate-50 py-10">
+      <section className="mx-auto w-full max-w-3xl rounded-[32px] border border-slate-200 bg-white px-6 py-10 shadow-sm shadow-slate-200/40">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-3xl bg-slate-900 text-white shadow">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <h2 className="text-3xl font-semibold text-slate-900">
             How can I help you today?
           </h2>
-
-          <p className="text-gray-500 mt-2 text-sm">
-            Ask anything about development, debugging, or concepts
+          <p className="mx-auto mt-3 max-w-xl text-sm text-slate-500">
+            Ask a question about development, debugging, or architecture and get
+            a clean, professional answer.
           </p>
         </div>
 
-        {/* Input Box */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-md p-2 flex items-center ">
-          <input
-            type="text"
-            placeholder="Ask anything..."
-            className="flex-1 px-3 py-3 text-sm outline-none text-gray-700"
-            onChange={(e) => handleChange(e)}
-            value={chat}
-            name="chat"
-            id="chat"
-          />
-
-          <button
-            className="flex items-center justify-center w-10 h-10 rounded-xl cursor-pointer bg-black text-white hover:bg-gray-800 transition"
-            onClick={handleSubmit}
-          >
-            <ArrowUp className="w-4 h-4" />
-          </button>
+        <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              placeholder="Type your request here..."
+              value={chat}
+              onChange={handleChange}
+              onKeyDown={(e) =>
+                e.key === "Enter" && !e.shiftKey && handleSubmit()
+              }
+              className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-1 focus:ring-slate-200"
+            />
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading || !chat.trim()}
+              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              {loading ? "Sending..." : <ArrowUp className="h-4 w-4" />}
+            </button>
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            Press Enter to send, or click the button to start a new chat.
+          </p>
         </div>
 
-        {/* Suggestions */}
-        <div className="flex flex-wrap justify-center gap-2 mt-6">
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
           {PrimaryTitle.map((item) => (
             <button
               key={item}
-              className="px-4 py-2 text-sm bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition"
+              type="button"
+              onClick={() => handleExampleClick(item)}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
             >
               {item}
             </button>
           ))}
         </div>
       </section>
+      <AuthModal open={open} onClose={() => setOpen(close)} />
     </main>
   );
 }
