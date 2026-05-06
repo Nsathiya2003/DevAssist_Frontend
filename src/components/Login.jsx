@@ -42,12 +42,13 @@ export default function AuthModal({ open, onClose }) {
       const backendRes = await axios.post(`${baseUrl}auth/verify-google`, {
         token: idToken,
       });
+      console.log("backendRes", backendRes.data?.data?.accessToken);
 
       if (backendRes?.data?.status === "success") {
         const { token, user } = backendRes.data;
-
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
+        console.log("After google register", token, user);
+        localStorage.setItem("token", backendRes.data?.data?.accessToken);
+        // localStorage.setItem("user", JSON.stringify(user));
 
         showSuccess("Login successful");
 
